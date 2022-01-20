@@ -22,7 +22,8 @@ add_executable(subscriber4_cpp_queue_function src/subscriber4_cpp_queue_function
 ament_target_dependencies(subscriber4_cpp_queue_function rclcpp std_msgs)
 add_executable(subscriber5_cpp_queue_class src/subscriber5_cpp_queue_class.cpp)
 ament_target_dependencies(subscriber5_cpp_queue_class rclcpp std_msgs)
-
+add_executable(subscriber6_cpp_queue_class_interface src/subscriber6_cpp_queue_class_interface.cpp)
+ament_target_dependencies(subscriber6_cpp_queue_class_interface rclcpp std_msgs)
 
 install(TARGETS
   publisher
@@ -31,6 +32,7 @@ install(TARGETS
   subscriber3_ros_multithread_executor
   subscriber4_cpp_queue_function
   subscriber5_cpp_queue_class
+  subscriber6_cpp_queue_class_interface
   DESTINATION lib/${PROJECT_NAME}
 )
 

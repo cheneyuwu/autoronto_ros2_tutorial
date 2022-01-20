@@ -7,32 +7,15 @@
 using namespace std::chrono_literals;
 using DataT = std_msgs::msg::String;
 
-void process(const DataT::SharedPtr& msg) {
-  // define internal state
-  static int data_count = 0;
-
-  // log where the data comes from
-  if (msg->data == "sensor1") {
-    RCLCPP_WARN(rclcpp::get_logger("subscriber"), "processing sensor1 data, count: %d", data_count);
-  } else if (msg->data == "sensor2") {
-    RCLCPP_ERROR(rclcpp::get_logger("subscriber"), "processing sensor2 data, count: %d", data_count);
-  }
-
-  // modify internal state
-  ++data_count;
-
-  // simulate processing time
-  std::this_thread::sleep_for(msg->data == "sensor1" ? 500ms : 50ms);
-}
 ///
-class DataProcessor {
- public:
-  DataProcessor() {
-    // RAII style
-    process_thread = std::thread(&DataProcessor::process, this);
+class BaseDataProcessor {
+ protected:
+  void start() {
+    //
+    process_thread = std::thread(&BaseDataProcessor::process, this);
   }
 
-  ~DataProcessor() {
+  void terminate() {
     // send the stop signal to the worker thread
     std::unique_lock<std::mutex> lock(mutex);
     stop = true;
@@ -43,6 +26,7 @@ class DataProcessor {
     if (process_thread.joinable()) process_thread.join();
   }
 
+ public:
   void process_callback(const DataT::SharedPtr msg) {
     std::lock_guard<std::mutex> lock(mutex);
 
@@ -76,9 +60,12 @@ class DataProcessor {
       lock.unlock();
 
       // process the data
-      ::process(msg);
+      process_(msg);
     };
   }
+
+ private:
+  virtual void process_(const DataT::SharedPtr& msg) = 0;
 
  private:
   // cpp queue to store incoming data
@@ -91,6 +78,31 @@ class DataProcessor {
   std::condition_variable cv_nonempty_or_stop;
   std::condition_variable cv_thread_finished;
   std::thread process_thread;
+};
+
+class DataProcessor : public BaseDataProcessor {
+ public:
+  DataProcessor() { start(); }
+  ~DataProcessor() { terminate(); }
+
+ private:
+  void process_(const DataT::SharedPtr& msg) override {
+    // log where the data comes from
+    if (msg->data == "sensor1") {
+      RCLCPP_WARN(rclcpp::get_logger("subscriber"), "processing sensor1 data, count: %d", data_count);
+    } else if (msg->data == "sensor2") {
+      RCLCPP_ERROR(rclcpp::get_logger("subscriber"), "processing sensor2 data, count: %d", data_count);
+    }
+
+    // modify internal state
+    ++data_count;
+
+    // simulate processing time
+    std::this_thread::sleep_for(msg->data == "sensor1" ? 500ms : 50ms);
+  }
+
+  // define internal state
+  int data_count = 0;
 };
 
 int main(int argc, char** argv) {
